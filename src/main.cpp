@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <WiFi.h>
 #include "DHT.h"
 
 #define DHTPIN 13     // Digital pin connected to the DHT sensor
