@@ -10,6 +10,9 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600;
 const int   daylightOffset_sec = 3600;
 
+const long uS_TO_S_FACTOR = 1000000; /* Conversion factor for micro seconds to seconds */
+const int TIME_TO_SLEEP_DAY = 1 * 10;    /* Time ESP32 will go to sleep (in seconds) */
+
 void printLocalTime()
 {
   struct tm timeinfo;
@@ -23,6 +26,8 @@ void printLocalTime()
 void setup()
 {
   Serial.begin(9600);
+  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP_DAY * uS_TO_S_FACTOR);
+
   
   //connect to WiFi
   Serial.printf("Connecting to %s ", ssid);
@@ -47,6 +52,7 @@ void loop()
 {
   delay(1000);
   printLocalTime();
+  esp_light_sleep_start();
 }
 
 
