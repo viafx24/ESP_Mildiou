@@ -94,6 +94,7 @@
 
 void printLocalTime();
 unsigned long Get_Epoch_Time();
+unsigned long Set_Next_Hour();
 
 // Connection to wifi
 
@@ -120,6 +121,7 @@ const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 3600;
 const int daylightOffset_sec = 3600;
 unsigned long Epoch_Time;
+unsigned long Next_Hour;
 
 // parameter light sleep
 
@@ -164,6 +166,12 @@ void setup()
 
   //delay(1000);
   printLocalTime();
+  Epoch_Time = Get_Epoch_Time();
+  Serial.println(Epoch_Time);
+  Next_Hour=Set_Next_Hour();
+  Serial.println(Next_Hour);
+  Epoch_Time = Get_Epoch_Time();
+  Serial.println(Epoch_Time);
 
   //disconnect WiFi as it's no longer needed
   WiFi.disconnect(true);
@@ -191,7 +199,7 @@ void loop()
 
   it++;
 
-  if (it == 10)
+  if (Epoch_Time > Next_Hour)
   {
 
     WiFi.begin(ssid, password);
@@ -267,6 +275,32 @@ unsigned long Get_Epoch_Time()
   time(&now);
   return now;
 }
+
+unsigned long Set_Next_Hour()
+{
+  time_t next_hour;
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo))
+  {
+    Serial.println("Failed to obtain time");
+    return (0);
+  }
+  // Serial.println(timeinfo.tm_hour);
+  // Serial.println(timeinfo.tm_min);
+
+  timeinfo.tm_hour=timeinfo.tm_hour + 0;
+  timeinfo.tm_min= 45;
+  timeinfo.tm_sec= 0;
+
+  // Serial.println(timeinfo.tm_hour);
+  // Serial.println(timeinfo.tm_min);
+
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  next_hour = mktime(&timeinfo);
+  //time(&next_hour);
+  return next_hour;
+}
+
 
 // #include <Arduino.h>
 // #include <WiFi.h>
