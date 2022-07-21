@@ -129,7 +129,7 @@ void loop()
 
   printLocalTime();
   delay(100);
-  
+
   if (Epoch_Time > Next_Time)
   {
 
@@ -162,7 +162,7 @@ void loop()
         for (int it2 = 0; it2 < it; it2++)
         {
           Serial.println(Data_wifi[it2]);
-          delay(100);
+          delay(10);
           client.println(Data_wifi[it2]);
           //delay(100);
         }
