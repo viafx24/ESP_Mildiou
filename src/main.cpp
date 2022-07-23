@@ -162,7 +162,7 @@ void loop()
         for (int it2 = 0; it2 < it; it2++)
         {
           Serial.println(Data_wifi[it2]);
-          delay(10);
+          delay(5);
           client.println(Data_wifi[it2]);
           //delay(100);
         }
