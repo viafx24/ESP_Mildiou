@@ -49,8 +49,10 @@ const int daylightOffset_sec = 3600;
 unsigned long Epoch_Time;
 
 unsigned long Time_Limit;
-int Time_To_Wait = 10;
+int Time_To_Wait = 5;
 
+long int t1;
+long int t2;
 // parameter light sleep
 
 const long uS_TO_S_FACTOR = 1000000;  /* Conversion factor for micro seconds to seconds */
@@ -92,11 +94,11 @@ void setup()
   //init and get the time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
-  //delay(1000);
   printLocalTime();
   Epoch_Time = Get_Epoch_Time();
   Serial.println(Epoch_Time);
   Next_Time = Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send);
+  // for relative in place of absolute
   //Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
   Serial.println(Next_Time);
   delay(100);
@@ -123,16 +125,22 @@ void loop()
   
 
   Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t));
+
+  // FOR DEBUGGING
+  printLocalTime();
   Serial.println(Data_wifi[it]);
   delay(100);
+
   it++;
 
-  printLocalTime();
-  delay(100);
+  // FOR DEBUGGING
+  //
+  // delay(100);
 
   if (Epoch_Time > Next_Time)
   {
-
+    printLocalTime();
+    t1= millis();
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -140,13 +148,11 @@ void loop()
       Serial.print(".");
     }
     Serial.println(" CONNECTED");
-
+    printLocalTime();
     server.begin();
-    printLocalTime();
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    printLocalTime();
     Epoch_Time = Get_Epoch_Time();
-    Serial.println(Epoch_Time);
+    //Serial.println(Epoch_Time);
     Time_Limit = Epoch_Time + Time_To_Wait;
 
     while (Get_Epoch_Time() < Time_Limit)
@@ -159,19 +165,27 @@ void loop()
 
         // while (client.connected())
         // {
+          
         for (int it2 = 0; it2 < it; it2++)
         {
-          Serial.println(Data_wifi[it2]);
-          delay(5);
+          //Serial.println(Data_wifi[it2]);
+          
           client.println(Data_wifi[it2]);
+          //delay(3);
           //delay(100);
         }
         // }
-
+        
+        delay(1000);
+        // delay(it*5);
+        // Serial.println(it);
+        // Serial.println(it*5);
+        
         it = 0;
         Data_Sent = true;
         Serial.println("Data Sent");
         client.stop();
+        //printLocalTime();
         break;
       }
     }
@@ -182,11 +196,17 @@ void loop()
 
     Next_Time =Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send)  ;
     //Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
-    Serial.println(Next_Time);
-    delay(100);
+    
+    // DEBUG
+    // Serial.println(Next_Time);
+    // delay(100);
+
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
+    t2= millis();
+    Serial.println(t2-t1);
     Data_Sent = false;
+    //printLocalTime();
 
   }
 
