@@ -8,11 +8,11 @@
 // parameter about Time_To_Send_Data: it is ABSOLUTE time.
 unsigned long Next_Time;
 int Day_To_Send = 0;
-int Hour_To_Send = 1;
+int Hour_To_Send = 0;
 int Minute_To_Send = 15;
 int Second_To_Send = 0;
 
-//int Minute_Relative_To_Send = 2;
+int Minute_Relative_To_Send = 1;
 
 // pas encore compris pourquoi je dois initilialiser les fonctions ici.
 
@@ -55,8 +55,8 @@ long int t1;
 long int t2;
 // parameter light sleep
 
-const long uS_TO_S_FACTOR = 1000000;  /* Conversion factor for micro seconds to seconds */
-const int TIME_TO_SLEEP_DAY = 1 * 30; /* Time ESP32 will go to sleep (in seconds) */
+const long uS_TO_S_FACTOR = 500000;  /* Conversion factor for micro seconds to seconds */
+const int TIME_TO_SLEEP_DAY = 1 ; /* Time ESP32 will go to sleep (in seconds) */
 
 // parameter DHT11
 
@@ -91,15 +91,15 @@ void setup()
   }
   Serial.println(" CONNECTED");
 
-  //init and get the time
+  //init and get the timeS
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
   printLocalTime();
   Epoch_Time = Get_Epoch_Time();
   Serial.println(Epoch_Time);
-  Next_Time = Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send);
+  //Next_Time = Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send);
   // for relative in place of absolute
-  //Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
+  Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
   Serial.println(Next_Time);
   delay(100);
 
@@ -194,8 +194,8 @@ void loop()
       Serial.println("Time out: no client");
     }
 
-    Next_Time =Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send)  ;
-    //Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
+    //Next_Time =Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send)  ;
+    Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
     
     // DEBUG
     // Serial.println(Next_Time);
