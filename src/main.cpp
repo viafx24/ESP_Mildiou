@@ -152,8 +152,9 @@ void loop()
     server.begin();
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     Epoch_Time = Get_Epoch_Time();
-    //Serial.println(Epoch_Time);
+    Serial.println(Epoch_Time);
     Time_Limit = Epoch_Time + Time_To_Wait;
+    Serial.println(Time_Limit);
 
     while (Get_Epoch_Time() < Time_Limit)
     {
