@@ -8,7 +8,7 @@
 // parameter about Time_To_Send_Data: it is ABSOLUTE time.
 unsigned long Next_Time;
 int Day_To_Send = 0;
-int Hour_To_Send = 6;
+int Hour_To_Send = 1;
 int Minute_To_Send = 15;
 int Second_To_Send = 0;
 
@@ -56,7 +56,7 @@ long int t2;
 // parameter light sleep
 
 const long uS_TO_S_FACTOR = 1000000;  /* Conversion factor for micro seconds to seconds */
-const int TIME_TO_SLEEP_DAY = 1 * 600; /* Time ESP32 will go to sleep (in seconds) */
+const int TIME_TO_SLEEP_DAY = 1 * 60; /* Time ESP32 will go to sleep (in seconds) */
 
 // parameter DHT11
 
