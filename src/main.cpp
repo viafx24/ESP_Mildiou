@@ -12,7 +12,7 @@ int Hour_To_Send = 0;
 int Minute_To_Send = 15;
 int Second_To_Send = 0;
 
-int Minute_Relative_To_Send = 8;
+int Minute_Relative_To_Send = 1;
 
 // pas encore compris pourquoi je dois initilialiser les fonctions ici.
 
@@ -49,14 +49,14 @@ const int daylightOffset_sec = 3600;
 unsigned long Epoch_Time;
 
 unsigned long Time_Limit;
-int Time_To_Wait = 5;
+int Time_To_Wait = 30;
 
 long int t1;
 long int t2;
 // parameter light sleep
 
 const long uS_TO_S_FACTOR = 1000000;  /* Conversion factor for micro seconds to seconds */
-const int TIME_TO_SLEEP_DAY = 1*300 ; /* Time ESP32 will go to sleep (in seconds) */
+const int TIME_TO_SLEEP_DAY = 1*60 ; /* Time ESP32 will go to sleep (in seconds) */
 
 // parameter DHT11
 
