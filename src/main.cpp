@@ -130,28 +130,25 @@ void loop()
   Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t));
 
   // FOR DEBUGGING
-  printLocalTime();
-  Serial.println(Data_wifi[it]);
-  delay(100);
+  // printLocalTime();
+  // Serial.println(Data_wifi[it]);
+  // delay(100);
 
   it++;
 
-  // FOR DEBUGGING
-  //
-  // delay(100);
 
   if (Epoch_Time > Next_Time)
   {
-    printLocalTime();
+    // printLocalTime();
     t1= millis();
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED)
     {
       delay(100);
-      Serial.print(".");
+      // Serial.print(".");
     }
-    Serial.println(" CONNECTED");
-    printLocalTime();
+    // Serial.println(" CONNECTED");
+    // printLocalTime();
     server.begin();
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     Epoch_Time = Get_Epoch_Time();
@@ -164,7 +161,7 @@ void loop()
 
       if (client)
       {
-        Serial.println("Client connected");
+        // Serial.println("Client connected");
 
         // while (client.connected())
         // {
@@ -179,14 +176,14 @@ void loop()
         }
         // }
         
-        delay(1000);
+        // delay(1000);
         // delay(it*5);
         // Serial.println(it);
         // Serial.println(it*5);
         
         it = 0;
         Data_Sent = true;
-        Serial.println("Data Sent");
+        //Serial.println("Data Sent");
         client.stop();
         //printLocalTime();
         break;
@@ -194,7 +191,7 @@ void loop()
     }
     if (Data_Sent == false)
     {
-      Serial.println("Time out: no client");
+      //Serial.println("Time out: no client");
     }
 
     Next_Time =Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send)  ;
@@ -208,6 +205,7 @@ void loop()
     WiFi.mode(WIFI_OFF);
     t2= millis();
     Serial.println(t2-t1);
+    delay(100);
     Data_Sent = false;
     //printLocalTime();
 
