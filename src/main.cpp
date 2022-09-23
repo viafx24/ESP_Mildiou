@@ -26,13 +26,13 @@ void setup()
 
   // defining variables and constant not to keep in rtc
 
-// unsigned long Next_Time;
+  // unsigned long Next_Time;
   int Day_To_Send = 0;
-  int Hour_To_Send = 0;
+  int Hour_To_Send = 10;
   int Minute_To_Send = 15;
   int Second_To_Send = 0;
 
-  int Minute_Relative_To_Send = 1;
+  int Minute_Relative_To_Send = 60;
 
   const char *ssid = "SFR_EC58";
   const char *password = "96wwza4yfz24qhtc4mxq";
@@ -45,9 +45,9 @@ void setup()
 
   const int ARRAYSIZE = 3100; // risk overflow
   // a single string of data will be sent by wifi
-  boolean Trigger_Time_Zero_For_Wifi = false;
-  unsigned long Time_Wifi_Zero;
-  unsigned long Time;
+  // boolean Trigger_Time_Zero_For_Wifi = false;
+  // unsigned long Time_Wifi_Zero;
+  // unsigned long Time;
 
   boolean Data_Sent = false;
 
@@ -68,8 +68,8 @@ void setup()
 
   // parameter deep sleep
 
-  const long uS_TO_S_FACTOR = 1000000;  /* Conversion factor for micro seconds to seconds */
-  const int TIME_TO_SLEEP_DAY = 1 * 60; /* Time ESP32 will go to sleep (in seconds) */
+  const long uS_TO_S_FACTOR = 1000000; /* Conversion factor for micro seconds to seconds */
+  const int TIME_TO_SLEEP_DAY = 1 * 2000; /* Time ESP32 will go to sleep (in seconds) */
 
   DHT dht(DHTPIN, DHTTYPE);
 
@@ -105,7 +105,7 @@ void setup()
     Epoch_Time = Get_Epoch_Time();
     Serial.println(Epoch_Time);
 
-    //Next_Time = Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send);
+    // Next_Time = Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send);
     Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
 
     Serial.println(Next_Time);
@@ -133,14 +133,22 @@ void setup()
   Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t));
 
   // FOR DEBUGGING
-  //printLocalTime();
+  // printLocalTime();
   Serial.println(Data_wifi[it]);
 
-  Serial.println( Epoch_Time);
-  Serial.println( Next_Time);
+  Serial.println(Epoch_Time);
+  Serial.println(Next_Time);
   delay(100);
 
   it++;
+  Serial.println(it);
+
+  if (it > 1)
+  {
+    Serial.println(Data_wifi[it-1]);
+  }
+
+  delay(100);
 
   if (Epoch_Time > Next_Time)
   {
@@ -153,7 +161,6 @@ void setup()
     }
 
     Serial.printf("Connecting to %s ", ssid);
-
 
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED)
@@ -168,13 +175,11 @@ void setup()
     Epoch_Time = Get_Epoch_Time();
     // Serial.println(Epoch_Time);
     Time_Limit = Epoch_Time + Time_To_Wait;
-    delay(1000);
-
     printLocalTime();
 
     while (Get_Epoch_Time() < Time_Limit)
     {
-      //Serial.println("waiting...");
+      // Serial.println("waiting...");
       WiFiClient client = server.available();
 
       if (client)
@@ -186,11 +191,17 @@ void setup()
 
         for (int it2 = 0; it2 < it; it2++)
         {
-          Serial.println(Data_wifi[it2]);
+          // Serial.println(Data_wifi[it2]);
 
           client.println(Data_wifi[it2]);
           // delay(3);
           // delay(100);
+        }
+
+        for (int it2 = 0; it2 < it; it2++)
+        {
+          Serial.println(Data_wifi[it2]);
+          delay(100);
         }
         // }
 
@@ -213,7 +224,7 @@ void setup()
       delay(100);
     }
 
-    //Next_Time = Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send);
+    // Next_Time = Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send);
     Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
 
     // DEBUG
@@ -310,10 +321,6 @@ unsigned long Set_Next_Time_Relative(int Day, int Hour, int Minute_Relative, int
   next_time = mktime(&timeinfo);
   return next_time;
 }
-
-
-
-
 
 // #include <Arduino.h>
 // #include <WiFi.h>
@@ -437,8 +444,6 @@ unsigned long Set_Next_Time_Relative(int Day, int Hour, int Minute_Relative, int
 //     return;
 //   }
 
-  
-
 //   Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t));
 
 //   // FOR DEBUGGING
@@ -481,22 +486,22 @@ unsigned long Set_Next_Time_Relative(int Day, int Hour, int Minute_Relative, int
 
 //         // while (client.connected())
 //         // {
-          
+
 //         for (int it2 = 0; it2 < it; it2++)
 //         {
 //           //Serial.println(Data_wifi[it2]);
-          
+
 //           client.println(Data_wifi[it2]);
 //           //delay(3);
 //           //delay(100);
 //         }
 //         // }
-        
+
 //         delay(1000);
 //         // delay(it*5);
 //         // Serial.println(it);
 //         // Serial.println(it*5);
-        
+
 //         it = 0;
 //         Data_Sent = true;
 //         Serial.println("Data Sent");
@@ -512,7 +517,7 @@ unsigned long Set_Next_Time_Relative(int Day, int Hour, int Minute_Relative, int
 
 //     //Next_Time =Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send)  ;
 //     Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
-    
+
 //     // DEBUG
 //     // Serial.println(Next_Time);
 //     // delay(100);
@@ -529,4 +534,3 @@ unsigned long Set_Next_Time_Relative(int Day, int Hour, int Minute_Relative, int
 
 //   esp_light_sleep_start();
 // }
-
