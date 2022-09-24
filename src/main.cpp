@@ -64,12 +64,17 @@ const int TIME_TO_SLEEP_DAY = 1 * 60; /* Time ESP32 will go to sleep (in seconds
 #define DHTTYPE DHT11 // DHT 11
 DHT dht(DHTPIN, DHTTYPE);
 
+
 // internal parameter
+
+int GPIO32=32;
 
 unsigned long it = 0; // iteration to save data in array
 
 void setup()
 {
+  pinMode(GPIO32,INPUT_PULLUP);
+
   Serial.begin(9600);
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP_DAY * uS_TO_S_FACTOR);
   dht.begin();
@@ -115,6 +120,10 @@ void loop()
   Epoch_Time = Get_Epoch_Time();
   float h = dht.readHumidity();
   float t = dht.readTemperature();
+  uint16_t battery = analogRead(GPIO32);
+  
+
+  // float Voltage_Battery = ((analogRead(32) *3.3 /4095) * 2);
 
   if (isnan(h) || isnan(t))
   {
@@ -127,12 +136,12 @@ void loop()
     it=0;
   }
 
-  Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t));
+  Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t) + "," + String(battery));
 
   // FOR DEBUGGING
   // printLocalTime();
-  // Serial.println(Data_wifi[it]);
-  // delay(100);
+  Serial.println(Data_wifi[it]);
+  delay(100);
 
   it++;
 
@@ -140,7 +149,7 @@ void loop()
   if (Epoch_Time > Next_Time)
   {
     // printLocalTime();
-    t1= millis();
+    // t1= millis();
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -203,9 +212,9 @@ void loop()
 
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
-    t2= millis();
-    Serial.println(t2-t1);
-    delay(100);
+    // t2= millis();
+    // Serial.println(t2-t1);
+    // delay(100);
     Data_Sent = false;
     //printLocalTime();
 
