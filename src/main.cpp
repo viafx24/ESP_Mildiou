@@ -185,7 +185,7 @@ void loop()
         }
         // }
         
-        // delay(1000);
+         delay(5000);
         // delay(it*5);
         // Serial.println(it);
         // Serial.println(it*5);
@@ -193,7 +193,9 @@ void loop()
         it = 0;
         Data_Sent = true;
         //Serial.println("Data Sent");
-        client.stop();
+
+        //client.stop();// test en commentant cela pour éviter bug readline
+        
         //printLocalTime();
         break;
       }
