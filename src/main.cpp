@@ -69,6 +69,20 @@ DHT dht(DHTPIN, DHTTYPE);
 
 int GPIO32=32;
 
+// computing battery percentage
+
+uint16_t xa=0;
+uint16_t xb=20;
+uint16_t xc=98;
+uint16_t ya=2425;
+uint16_t yb=1275;
+uint16_t yc=2050;
+uint16_t b1=2425;
+uint16_t b2=yb - ((yc-yb)/(xc-xb))*xb;
+
+uint16_t Battery_Level;
+
+
 unsigned long it = 0; // iteration to save data in array
 
 void setup()
@@ -122,6 +136,24 @@ void loop()
   float t = dht.readTemperature();
   uint16_t battery = analogRead(GPIO32);
   
+	if (battery > yb) 
+	{
+		Battery_Level = 100 - ((battery - b1) * ( (xb - xa)/(yb - ya)));
+
+	}
+	
+	if ((battery <= yb) && (battery >= yc))
+	{
+		Battery_Level = 100 - ((battery - b2) * ( (xc - xb)/(yc - yb)));
+		
+	}
+
+
+	if (battery < yc) 
+	{
+		Battery_Level = 0;
+		
+	}
 
   // float Voltage_Battery = ((analogRead(32) *3.3 /4095) * 2);
 
@@ -136,7 +168,7 @@ void loop()
     it=0;
   }
 
-  Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t) + "," + String(battery));
+  Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t) + "," + String(Battery_Level));
 
   // FOR DEBUGGING
   // printLocalTime();
@@ -185,7 +217,7 @@ void loop()
         }
         // }
         
-         delay(5000);
+         delay(2000); // ce delay pourrait être important si problème, le monter à 5000.
         // delay(it*5);
         // Serial.println(it);
         // Serial.println(it*5);
