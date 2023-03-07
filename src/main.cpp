@@ -75,8 +75,8 @@ uint16_t xa=0;
 uint16_t xb=20;
 uint16_t xc=98;
 uint16_t ya=2425;
-uint16_t yb=1275;
-uint16_t yc=2050;
+uint16_t yb=2050;
+uint16_t yc=1275;
 uint16_t b1=2425;
 uint16_t b2=yb - ((yc-yb)/(xc-xb))*xb;
 
