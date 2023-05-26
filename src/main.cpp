@@ -1,20 +1,6 @@
 
 
 #include <Arduino.h>
-
-/*
-  Adapted from WriteSingleField Example from ThingSpeak Library (Mathworks)
-
-  Rui Santos
-  Complete project details at https://RandomNerdTutorials.com/esp32-thingspeak-publish-arduino/
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files.
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-*/
-
 #include <WiFi.h>
 #include "ThingSpeak.h"
 #include "DHT.h"
@@ -40,24 +26,26 @@ DHT dht(DHTPIN, DHTTYPE);
 // Variable to hold temperature readings
 float temperatureC;
 float humidity;
-int Limit_Channel_15 = 1;
-// uncomment if you want to get temperature in Fahrenheit
-// float temperatureF;
 
-// Create a sensor object
-// Adafruit_BME280 bme; //BME280 connect to ESP32 I2C (GPIO 21 = SDA, GPIO 22 = SCL)
+// battery level
 
-// void initBME(){
-//   if (!bme.begin(0x76)) {
-//     Serial.println("Could not find a valid BME280 sensor, check wiring!");
-//     while (1);
-//   }
-// }
+int GPIO32 = 35;
+
+float xa = 0;
+float xb = 20;
+float xc = 98;
+float ya = 2425;
+float yb = 2275;
+float yc = 2050;
+float b1 = 2425;
+float b2 = yb - ((yc - yb) / (xc - xb)) * xb;
+
+uint16_t battery;
+float Battery_Level;
 
 void setup()
 {
   Serial.begin(9600); // Initialize serial
-  // initBME();
 
   WiFi.mode(WIFI_STA);
 
@@ -88,48 +76,55 @@ void loop()
     temperatureC = dht.readTemperature();
     humidity = dht.readHumidity();
 
+    battery = analogRead(GPIO32);
+
+    if (battery > yb)
+    {
+      Battery_Level = 100 - ((battery - b1) * ((xb - xa) / (yb - ya)));
+    }
+
+    if ((battery <= yb) && (battery >= yc))
+    {
+      Battery_Level = 100 - ((battery - b2) * ((xc - xb) / (yc - yb)));
+
+    }
+
+    if (battery < yc)
+    {
+      Battery_Level = 0;
+    }
+
     Serial.print("Temperature : ");
     Serial.println(temperatureC);
 
     Serial.print("Humidity: ");
     Serial.println(humidity);
 
+    Serial.print("Analog read: ");
+    Serial.println(battery);
+
+    Serial.print("Battery level: ");
+    Serial.println(Battery_Level);
+
+    ThingSpeak.setField(1, temperatureC);
+    ThingSpeak.setField(2, humidity);
+    ThingSpeak.setField(3, battery);
+    ThingSpeak.setField(4, Battery_Level);
+
     // Write to ThingSpeak. There are up to 8 fields in a channel, allowing you to store up to 8 different
     // pieces of information in a channel.  Here, we write to field 1.
 
-    if (Limit_Channel_15 == 1)
+    int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+
+    if (x == 200)
     {
-
-      int x = ThingSpeak.writeField(myChannelNumber, 1, temperatureC, myWriteAPIKey);
-
-      if (x == 200)
-      {
-        Serial.println("Channel update successful.");
-      }
-      else
-      {
-        Serial.println("Problem updating channel. HTTP error code " + String(x));
-      }
-      lastTime = millis();
-      Limit_Channel_15 = 2;
+      Serial.println("Channel update successful.");
     }
-    else if (Limit_Channel_15 == 2)
-
+    else
     {
-
-      int x = ThingSpeak.writeField(myChannelNumber, 2, humidity, myWriteAPIKey);
-
-      if (x == 200)
-      {
-        Serial.println("Channel update successful.");
-      }
-      else
-      {
-        Serial.println("Problem updating channel. HTTP error code " + String(x));
-      }
-      lastTime = millis();
-      Limit_Channel_15 = 1;
+      Serial.println("Problem updating channel. HTTP error code " + String(x));
     }
+    lastTime = millis();
   }
 }
 
