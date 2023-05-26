@@ -1,62 +1,35 @@
 
 
 #include <Arduino.h>
+
+/*
+  Adapted from WriteSingleField Example from ThingSpeak Library (Mathworks)
+
+  Rui Santos
+  Complete project details at https://RandomNerdTutorials.com/esp32-thingspeak-publish-arduino/
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files.
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+*/
+
 #include <WiFi.h>
-#include "time.h"
+#include "ThingSpeak.h"
 #include "DHT.h"
 
-// parameter about Time_To_Send_Data: it is ABSOLUTE time.
-unsigned long Next_Time;
-int Day_To_Send = 0;
-int Hour_To_Send = 1;
-int Minute_To_Send = 15;
-int Second_To_Send = 0;
+const char *ssid = "SFR_EC58";                 // your network SSID (name)
+const char *password = "96wwza4yfz24qhtc4mxq"; // your network password
 
-//int Minute_Relative_To_Send = 2;
+WiFiClient client;
 
-// pas encore compris pourquoi je dois initilialiser les fonctions ici.
+unsigned long myChannelNumber = 1;
+const char *myWriteAPIKey = "G8GL9TNBMMD1QBHR";
 
-void printLocalTime();
-unsigned long Get_Epoch_Time();
-unsigned long Set_Next_Time(int Day, int Hour, int Minute, int Second);
-unsigned long Set_Next_Time_Relative(int Day, int Hour, int Minute_Relative, int Second);
-// Connection to wifi
-
-const char *ssid = "SFR_EC58";
-const char *password = "96wwza4yfz24qhtc4mxq";
-
-// to set the static IP address to 192, 168, 1, 24
-IPAddress local_IP(192, 168, 1, 24);
-IPAddress gateway(192, 168, 1, 1);
-IPAddress subnet(255, 255, 255, 0);
-IPAddress dns(192, 168, 1, 1); //needed to go on internet
-
-const int ARRAYSIZE = 3100;  // risk overflow
-String Data_wifi[ARRAYSIZE]; // a single string of data will be sent by wifi
-boolean Trigger_Time_Zero_For_Wifi = false;
-unsigned long Time_Wifi_Zero;
-unsigned long Time;
-
-boolean Data_Sent = false;
-
-WiFiServer server(80);
-
-// parameter for time with NTP
-
-const char *ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 3600;
-const int daylightOffset_sec = 3600;
-unsigned long Epoch_Time;
-
-unsigned long Time_Limit;
-int Time_To_Wait = 5;
-
-long int t1;
-long int t2;
-// parameter light sleep
-
-const long uS_TO_S_FACTOR = 1000000;  /* Conversion factor for micro seconds to seconds */
-const int TIME_TO_SLEEP_DAY = 1 * 60; /* Time ESP32 will go to sleep (in seconds) */
+// Timer variables
+unsigned long lastTime = 0;
+unsigned long timerDelay = 16000;
 
 // parameter DHT11
 
@@ -64,258 +37,413 @@ const int TIME_TO_SLEEP_DAY = 1 * 60; /* Time ESP32 will go to sleep (in seconds
 #define DHTTYPE DHT11 // DHT 11
 DHT dht(DHTPIN, DHTTYPE);
 
+// Variable to hold temperature readings
+float temperatureC;
+float humidity;
+int Limit_Channel_15 = 1;
+// uncomment if you want to get temperature in Fahrenheit
+// float temperatureF;
 
-// internal parameter
+// Create a sensor object
+// Adafruit_BME280 bme; //BME280 connect to ESP32 I2C (GPIO 21 = SDA, GPIO 22 = SCL)
 
-int GPIO32=32;
-
-// computing battery percentage
-
-uint16_t xa=0;
-uint16_t xb=20;
-uint16_t xc=98;
-uint16_t ya=2425;
-uint16_t yb=2050;
-uint16_t yc=1275;
-uint16_t b1=2425;
-uint16_t b2=yb - ((yc-yb)/(xc-xb))*xb;
-
-uint16_t Battery_Level;
-
-
-unsigned long it = 0; // iteration to save data in array
+// void initBME(){
+//   if (!bme.begin(0x76)) {
+//     Serial.println("Could not find a valid BME280 sensor, check wiring!");
+//     while (1);
+//   }
+// }
 
 void setup()
 {
-  pinMode(GPIO32,INPUT_PULLUP);
+  Serial.begin(9600); // Initialize serial
+  // initBME();
 
-  Serial.begin(9600);
-  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP_DAY * uS_TO_S_FACTOR);
+  WiFi.mode(WIFI_STA);
+
+  ThingSpeak.begin(client); // Initialize ThingSpeak
+
   dht.begin();
-
-  //connect to WiFi
-
-  if (!WiFi.config(local_IP, gateway, subnet, dns))
-  {
-    Serial.println("IP adress could not be set to 192.168.1.24");
-  }
-
-  Serial.printf("Connecting to %s ", ssid);
-
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(100);
-    Serial.print(".");
-  }
-  Serial.println(" CONNECTED");
-
-  //init and get the time
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-
-  printLocalTime();
-  Epoch_Time = Get_Epoch_Time();
-  Serial.println(Epoch_Time);
-  Next_Time = Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send);
-  // for relative in place of absolute
-  //Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
-  Serial.println(Next_Time);
-  delay(100);
-
-  //disconnect WiFi as it's no longer needed
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_OFF);
-
-  //server.begin();
 }
 
 void loop()
 {
-  Epoch_Time = Get_Epoch_Time();
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
-  uint16_t battery = analogRead(GPIO32);
-  
-	if (battery > yb) 
-	{
-		Battery_Level = 100 - ((battery - b1) * ( (xb - xa)/(yb - ya)));
-
-	}
-	
-	if ((battery <= yb) && (battery >= yc))
-	{
-		Battery_Level = 100 - ((battery - b2) * ( (xc - xb)/(yc - yb)));
-		
-	}
-
-
-	if (battery < yc) 
-	{
-		Battery_Level = 0;
-		
-	}
-
-  // float Voltage_Battery = ((analogRead(32) *3.3 /4095) * 2);
-
-  if (isnan(h) || isnan(t))
+  if ((millis() - lastTime) > timerDelay)
   {
-    Serial.println(F("Failed to read from DHT sensor!"));
-    return;
-  }
 
-  if (it==ARRAYSIZE)
-  {
-    it=0;
-  }
-
-  Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t) + "," + String(Battery_Level));
-
-  // FOR DEBUGGING
-  // printLocalTime();
-  Serial.println(Data_wifi[it]);
-  delay(100);
-
-  it++;
-
-
-  if (Epoch_Time > Next_Time)
-  {
-    // printLocalTime();
-    // t1= millis();
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED)
+    // Connect or reconnect to WiFi
+    if (WiFi.status() != WL_CONNECTED)
     {
-      delay(100);
-      // Serial.print(".");
-    }
-    // Serial.println(" CONNECTED");
-    // printLocalTime();
-    server.begin();
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    Epoch_Time = Get_Epoch_Time();
-    //Serial.println(Epoch_Time);
-    Time_Limit = Epoch_Time + Time_To_Wait;
-
-    while (Get_Epoch_Time() < Time_Limit)
-    {
-      WiFiClient client = server.available();
-
-      if (client)
+      Serial.print("Attempting to connect");
+      while (WiFi.status() != WL_CONNECTED)
       {
-        // Serial.println("Client connected");
-
-        // while (client.connected())
-        // {
-          
-        for (int it2 = 0; it2 < it; it2++)
-        {
-          //Serial.println(Data_wifi[it2]);
-          
-          client.println(Data_wifi[it2]);
-          //delay(3);
-          //delay(100);
-        }
-        // }
-        
-         delay(2000); // ce delay pourrait être important si problème, le monter à 5000.
-        // delay(it*5);
-        // Serial.println(it);
-        // Serial.println(it*5);
-        
-        it = 0;
-        Data_Sent = true;
-        //Serial.println("Data Sent");
-
-        //client.stop();// test en commentant cela pour éviter bug readline
-        
-        //printLocalTime();
-        break;
+        WiFi.begin(ssid, password);
+        delay(5000);
       }
+      Serial.println("\nConnected.");
     }
-    if (Data_Sent == false)
+
+    // Get a new temperature reading
+
+    temperatureC = dht.readTemperature();
+    humidity = dht.readHumidity();
+
+    Serial.print("Temperature : ");
+    Serial.println(temperatureC);
+
+    Serial.print("Humidity: ");
+    Serial.println(humidity);
+
+    // Write to ThingSpeak. There are up to 8 fields in a channel, allowing you to store up to 8 different
+    // pieces of information in a channel.  Here, we write to field 1.
+
+    if (Limit_Channel_15 == 1)
     {
-      //Serial.println("Time out: no client");
+
+      int x = ThingSpeak.writeField(myChannelNumber, 1, temperatureC, myWriteAPIKey);
+
+      if (x == 200)
+      {
+        Serial.println("Channel update successful.");
+      }
+      else
+      {
+        Serial.println("Problem updating channel. HTTP error code " + String(x));
+      }
+      lastTime = millis();
+      Limit_Channel_15 = 2;
     }
+    else if (Limit_Channel_15 == 2)
 
-    Next_Time =Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send)  ;
-    //Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
-    
-    // DEBUG
-    // Serial.println(Next_Time);
-    // delay(100);
+    {
 
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
-    // t2= millis();
-    // Serial.println(t2-t1);
-    // delay(100);
-    Data_Sent = false;
-    //printLocalTime();
+      int x = ThingSpeak.writeField(myChannelNumber, 2, humidity, myWriteAPIKey);
 
+      if (x == 200)
+      {
+        Serial.println("Channel update successful.");
+      }
+      else
+      {
+        Serial.println("Problem updating channel. HTTP error code " + String(x));
+      }
+      lastTime = millis();
+      Limit_Channel_15 = 1;
+    }
   }
-
-  esp_light_sleep_start();
 }
 
-void printLocalTime()
-{
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo))
-  {
-    Serial.println("Failed to obtain time");
-    return;
-  }
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-}
+// #include <WiFi.h>
+// #include "time.h"
+// #include "DHT.h"
 
-// Get_Epoch_Time() Function that gets current epoch time
-unsigned long Get_Epoch_Time()
-{
-  time_t now;
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo))
-  {
-    Serial.println("Failed to obtain time");
-    return (0);
-  }
-  time(&now);
-  return now;
-}
+// // parameter about Time_To_Send_Data: it is ABSOLUTE time.
+// unsigned long Next_Time;
+// int Day_To_Send = 0;
+// int Hour_To_Send = 1;
+// int Minute_To_Send = 15;
+// int Second_To_Send = 0;
 
-unsigned long Set_Next_Time(int Day, int Hour, int Minute, int Second)
-{
-  time_t next_time;
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo))
-  {
-    Serial.println("Failed to obtain time");
-    return (0);
-  }
+// //int Minute_Relative_To_Send = 2;
 
-  timeinfo.tm_hour = timeinfo.tm_hour + Hour;
-  timeinfo.tm_min = Minute;
-  timeinfo.tm_sec = Second;
+// // pas encore compris pourquoi je dois initilialiser les fonctions ici.
 
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-  next_time = mktime(&timeinfo);
-  return next_time;
-}
+// void printLocalTime();
+// unsigned long Get_Epoch_Time();
+// unsigned long Set_Next_Time(int Day, int Hour, int Minute, int Second);
+// unsigned long Set_Next_Time_Relative(int Day, int Hour, int Minute_Relative, int Second);
+// // Connection to wifi
 
-unsigned long Set_Next_Time_Relative(int Day, int Hour, int Minute_Relative, int Second)
-{
-  time_t next_time;
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo))
-  {
-    Serial.println("Failed to obtain time");
-    return (0);
-  }
+// const char *ssid = "SFR_EC58";
+// const char *password = "96wwza4yfz24qhtc4mxq";
 
-  timeinfo.tm_hour = timeinfo.tm_hour + Hour;
-  timeinfo.tm_min = timeinfo.tm_min + Minute_Relative;
-  timeinfo.tm_sec = Second;
+// // to set the static IP address to 192, 168, 1, 24
+// IPAddress local_IP(192, 168, 1, 24);
+// IPAddress gateway(192, 168, 1, 1);
+// IPAddress subnet(255, 255, 255, 0);
+// IPAddress dns(192, 168, 1, 1); //needed to go on internet
 
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-  next_time = mktime(&timeinfo);
-  return next_time;
-}
+// const int ARRAYSIZE = 3100;  // risk overflow
+// String Data_wifi[ARRAYSIZE]; // a single string of data will be sent by wifi
+// boolean Trigger_Time_Zero_For_Wifi = false;
+// unsigned long Time_Wifi_Zero;
+// unsigned long Time;
+
+// boolean Data_Sent = false;
+
+// WiFiServer server(80);
+
+// // parameter for time with NTP
+
+// const char *ntpServer = "pool.ntp.org";
+// const long gmtOffset_sec = 3600;
+// const int daylightOffset_sec = 3600;
+// unsigned long Epoch_Time;
+
+// unsigned long Time_Limit;
+// int Time_To_Wait = 5;
+
+// long int t1;
+// long int t2;
+// // parameter light sleep
+
+// const long uS_TO_S_FACTOR = 1000000;  /* Conversion factor for micro seconds to seconds */
+// const int TIME_TO_SLEEP_DAY = 1 * 60; /* Time ESP32 will go to sleep (in seconds) */
+
+// // parameter DHT11
+
+// #define DHTPIN 13     // Digital pin connected to the DHT sensor use pins 3, 4, 5, 12, 13 or 14 --
+// #define DHTTYPE DHT11 // DHT 11
+// DHT dht(DHTPIN, DHTTYPE);
+
+// // internal parameter
+
+// int GPIO32=32;
+
+// // computing battery percentage
+
+// uint16_t xa=0;
+// uint16_t xb=20;
+// uint16_t xc=98;
+// uint16_t ya=2425;
+// uint16_t yb=2050;
+// uint16_t yc=1275;
+// uint16_t b1=2425;
+// uint16_t b2=yb - ((yc-yb)/(xc-xb))*xb;
+
+// uint16_t Battery_Level;
+
+// unsigned long it = 0; // iteration to save data in array
+
+// void setup()
+// {
+//   pinMode(GPIO32,INPUT_PULLUP);
+
+//   Serial.begin(9600);
+//   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP_DAY * uS_TO_S_FACTOR);
+//   dht.begin();
+
+//   //connect to WiFi
+
+//   if (!WiFi.config(local_IP, gateway, subnet, dns))
+//   {
+//     Serial.println("IP adress could not be set to 192.168.1.24");
+//   }
+
+//   Serial.printf("Connecting to %s ", ssid);
+
+//   WiFi.begin(ssid, password);
+//   while (WiFi.status() != WL_CONNECTED)
+//   {
+//     delay(100);
+//     Serial.print(".");
+//   }
+//   Serial.println(" CONNECTED");
+
+//   //init and get the time
+//   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+//   printLocalTime();
+//   Epoch_Time = Get_Epoch_Time();
+//   Serial.println(Epoch_Time);
+//   Next_Time = Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send);
+//   // for relative in place of absolute
+//   //Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
+//   Serial.println(Next_Time);
+//   delay(100);
+
+//   //disconnect WiFi as it's no longer needed
+//   WiFi.disconnect(true);
+//   WiFi.mode(WIFI_OFF);
+
+//   //server.begin();
+// }
+
+// void loop()
+// {
+//   Epoch_Time = Get_Epoch_Time();
+//   float h = dht.readHumidity();
+//   float t = dht.readTemperature();
+//   uint16_t battery = analogRead(GPIO32);
+
+// 	if (battery > yb)
+// 	{
+// 		Battery_Level = 100 - ((battery - b1) * ( (xb - xa)/(yb - ya)));
+
+// 	}
+
+// 	if ((battery <= yb) && (battery >= yc))
+// 	{
+// 		Battery_Level = 100 - ((battery - b2) * ( (xc - xb)/(yc - yb)));
+
+// 	}
+
+// 	if (battery < yc)
+// 	{
+// 		Battery_Level = 0;
+
+// 	}
+
+//   // float Voltage_Battery = ((analogRead(32) *3.3 /4095) * 2);
+
+//   if (isnan(h) || isnan(t))
+//   {
+//     Serial.println(F("Failed to read from DHT sensor!"));
+//     return;
+//   }
+
+//   if (it==ARRAYSIZE)
+//   {
+//     it=0;
+//   }
+
+//   Data_wifi[it] = String(String(Epoch_Time) + "," + String(h) + "," + String(t) + "," + String(Battery_Level));
+
+//   // FOR DEBUGGING
+//   // printLocalTime();
+//   Serial.println(Data_wifi[it]);
+//   delay(100);
+
+//   it++;
+
+//   if (Epoch_Time > Next_Time)
+//   {
+//     // printLocalTime();
+//     // t1= millis();
+//     WiFi.begin(ssid, password);
+//     while (WiFi.status() != WL_CONNECTED)
+//     {
+//       delay(100);
+//       // Serial.print(".");
+//     }
+//     // Serial.println(" CONNECTED");
+//     // printLocalTime();
+//     server.begin();
+//     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+//     Epoch_Time = Get_Epoch_Time();
+//     //Serial.println(Epoch_Time);
+//     Time_Limit = Epoch_Time + Time_To_Wait;
+
+//     while (Get_Epoch_Time() < Time_Limit)
+//     {
+//       WiFiClient client = server.available();
+
+//       if (client)
+//       {
+//         // Serial.println("Client connected");
+
+//         // while (client.connected())
+//         // {
+
+//         for (int it2 = 0; it2 < it; it2++)
+//         {
+//           //Serial.println(Data_wifi[it2]);
+
+//           client.println(Data_wifi[it2]);
+//           //delay(3);
+//           //delay(100);
+//         }
+//         // }
+
+//          delay(2000); // ce delay pourrait être important si problème, le monter à 5000.
+//         // delay(it*5);
+//         // Serial.println(it);
+//         // Serial.println(it*5);
+
+//         it = 0;
+//         Data_Sent = true;
+//         //Serial.println("Data Sent");
+
+//         //client.stop();// test en commentant cela pour éviter bug readline
+
+//         //printLocalTime();
+//         break;
+//       }
+//     }
+//     if (Data_Sent == false)
+//     {
+//       //Serial.println("Time out: no client");
+//     }
+
+//     Next_Time =Set_Next_Time(Day_To_Send, Hour_To_Send, Minute_To_Send, Second_To_Send)  ;
+//     //Next_Time = Set_Next_Time_Relative(Day_To_Send, Hour_To_Send, Minute_Relative_To_Send, Second_To_Send);
+
+//     // DEBUG
+//     // Serial.println(Next_Time);
+//     // delay(100);
+
+//     WiFi.disconnect(true);
+//     WiFi.mode(WIFI_OFF);
+//     // t2= millis();
+//     // Serial.println(t2-t1);
+//     // delay(100);
+//     Data_Sent = false;
+//     //printLocalTime();
+
+//   }
+
+//   esp_light_sleep_start();
+// }
+
+// void printLocalTime()
+// {
+//   struct tm timeinfo;
+//   if (!getLocalTime(&timeinfo))
+//   {
+//     Serial.println("Failed to obtain time");
+//     return;
+//   }
+//   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+// }
+
+// // Get_Epoch_Time() Function that gets current epoch time
+// unsigned long Get_Epoch_Time()
+// {
+//   time_t now;
+//   struct tm timeinfo;
+//   if (!getLocalTime(&timeinfo))
+//   {
+//     Serial.println("Failed to obtain time");
+//     return (0);
+//   }
+//   time(&now);
+//   return now;
+// }
+
+// unsigned long Set_Next_Time(int Day, int Hour, int Minute, int Second)
+// {
+//   time_t next_time;
+//   struct tm timeinfo;
+//   if (!getLocalTime(&timeinfo))
+//   {
+//     Serial.println("Failed to obtain time");
+//     return (0);
+//   }
+
+//   timeinfo.tm_hour = timeinfo.tm_hour + Hour;
+//   timeinfo.tm_min = Minute;
+//   timeinfo.tm_sec = Second;
+
+//   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+//   next_time = mktime(&timeinfo);
+//   return next_time;
+// }
+
+// unsigned long Set_Next_Time_Relative(int Day, int Hour, int Minute_Relative, int Second)
+// {
+//   time_t next_time;
+//   struct tm timeinfo;
+//   if (!getLocalTime(&timeinfo))
+//   {
+//     Serial.println("Failed to obtain time");
+//     return (0);
+//   }
+
+//   timeinfo.tm_hour = timeinfo.tm_hour + Hour;
+//   timeinfo.tm_min = timeinfo.tm_min + Minute_Relative;
+//   timeinfo.tm_sec = Second;
+
+//   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+//   next_time = mktime(&timeinfo);
+//   return next_time;
+// }
